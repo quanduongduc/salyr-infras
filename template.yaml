@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  Prefix:
+    Type: String
+    Default: "devops-quandd-"
+Resources:
+  AssetBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${Prefix}asset
+
+  LambdaFunctionBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${Prefix}lambda-functions
+
+Outputs:
+  AssetBucket:
+    Description: Arn of Bucker for store asset
+    Value: !Ref AssetBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-AssetBucket"
+  LambdaFunctionBucket:
+    Description: Arn of Bucket for store lambda function deployment packages
+    Value: !Ref LambdaFunctionBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaFunctionBucket"
