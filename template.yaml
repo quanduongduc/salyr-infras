@@ -1,28 +1,61 @@
 AWSTemplateFormatVersion: 2010-09-09
 
 Parameters:
-  Prefix:
+  ProjectName:
     Type: String
-    Default: "devops-quandd-"
+    Default: "salyr"
+  Enviroment:
+    Type: String
+    Default: "dev"
+    AllowedValues:
+      - dev
+      - test
+      - prod
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+  AmiID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Description: "The ID of the AMI."
+    Default: ami-0ed99df77a82560e6
+
 Resources:
-  AssetBucket:
-    Type: AWS::S3::Bucket
+  WebAppInstance:
+    Type: AWS::EC2::Instance
     Properties:
-      BucketName: !Sub ${Prefix}asset
+      AvailabilityZone: !Ref AvailabilityZone
+      ImageId: !Ref AmiID
+      InstanceType: t2.micro
+      KeyName: !Sub ${ProjectName}-web-server-${Enviroment}-key # <-- Change to use your key-pair name
+      SubnetId:
+        - A Public subnet cause i dont want to pay for NAT
+      SecurityGroupIds:
+        - !Ref WebAppSecurityGroup
 
-  LambdaFunctionBucket:
-    Type: AWS::S3::Bucket
+  WebAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      BucketName: !Sub ${Prefix}lambda-functions
+      GroupName: !Join ["-", [!Ref ProjectName , sg, !Ref Enviroment]]
+      GroupDescription: "Allow HTTP/HTTPS and SSH inbound and outbound traffic"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
 
-Outputs:
-  AssetBucket:
-    Description: Arn of Bucker for store asset
-    Value: !Ref AssetBucket
-    Export:
-      Name: !Sub "${AWS::StackName}-AssetBucket"
-  LambdaFunctionBucket:
-    Description: Arn of Bucket for store lambda function deployment packages
-    Value: !Ref LambdaFunctionBucket
-    Export:
-      Name: !Sub "${AWS::StackName}-LambdaFunctionBucket"
+  WebAppEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref WebAppInstance
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref ProjectName , eip, !Ref Enviroment]]
+
