@@ -16,7 +16,7 @@ Parameters:
   AmiID:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Description: "The ID of the AMI."
-    Default: ami-0ed99df77a82560e6
+    Default: ami-0ed99df77a82560e6 # ubuntu 20.04 LTS
 
 Resources:
   WebAppInstance:
