@@ -11,31 +11,61 @@ Parameters:
       - dev
       - test
       - prod
-  AvailabilityZone:
-    Type: AWS::EC2::AvailabilityZone::Name
   AmiID:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Description: "The ID of the AMI."
-    Default: ami-0ed99df77a82560e6 # ubuntu 20.04 LTS
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  VpcId:
+    Type: String
+    Default: vpc-06567df39da2c6a9f
+  PublicSubnetId:
+    Type: String
+    Default: subnet-0586cc6b73e3e517c
 
 Resources:
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VpcId
+      InternetGatewayId: !Ref InternetGateway
+  
+  RouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VpcId
+
+  InternetRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref RouteTable
+
+  SubnetARouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref PublicSubnetId
+
   WebAppInstance:
     Type: AWS::EC2::Instance
     Properties:
-      AvailabilityZone: !Ref AvailabilityZone
       ImageId: !Ref AmiID
       InstanceType: t2.micro
-      KeyName: !Sub ${ProjectName}-web-server-${Enviroment}-key # <-- Change to use your key-pair name
-      SubnetId:
-        - A Public subnet cause i dont want to pay for NAT
+      KeyName: !Sub ${ProjectName}-web-server-${Enviroment}-key
+      SubnetId: !Ref PublicSubnetId
       SecurityGroupIds:
-        - !Ref WebAppSecurityGroup
+        - !GetAtt WebAppSecurityGroup.GroupId
 
   WebAppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: !Join ["-", [!Ref ProjectName , sg, !Ref Enviroment]]
       GroupDescription: "Allow HTTP/HTTPS and SSH inbound and outbound traffic"
+      VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -58,4 +88,6 @@ Resources:
       Tags:
         - Key: Name
           Value: !Join ["-", [!Ref ProjectName , eip, !Ref Enviroment]]
+  
+
 
