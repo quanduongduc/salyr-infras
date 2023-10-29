@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  Project:
+    Type: String
+    Default: "salyr"
+  Enviroment:
+    Type: String
+    Default: "dev"
+    AllowedValues:
+      - dev
+      - test
+      - prod
+  PermissionBoundaryName:
+    Type: String
+    Default: SalyrDeveloperPermissionBoudary
+Resources:
+  WebServerRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Action: sts:AssumeRole
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+        RoleName: !Sub ${Project}-web-server-role
+        Policies:
+          - PolicyName: !Sub ${Project}-secret-manager-access-policy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - secretsmanager:GetSecretValue
+                    - secretsmanager:ListSecrets
+                    - secretsmanager:DescribeSecret
+                    - secretsmanager:GetRandomPassword
+                    - secretsmanager:GetResourcePolicy
+                    - secretsmanager:ListSecretVersionIds
+                  Resource: !Sub "arn:aws:secretsmanager:*:${AWS::AccountId}:secret:salyr-*"
+                  
+        PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/${PermissionBoundaryName}
+
+Outputs:
+  ExportedRole:
+    Value: !Ref WebServerRole
+    Export:
+      Name: !Sub ${Project}-web-server-role

@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 
 Parameters:
-  ProjectName:
+  Project:
     Type: String
     Default: "salyr"
   Enviroment:
@@ -15,57 +15,41 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Description: "The ID of the AMI."
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
-  VpcId:
+  DBInstanceClass:
     Type: String
-    Default: vpc-06567df39da2c6a9f
-  PublicSubnetId:
+    Default: db.t2.micro
+  DBUserName:
     Type: String
-    Default: subnet-0586cc6b73e3e517c
+    Default: quandd
 
 Resources:
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-
-  AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VpcId
-      InternetGatewayId: !Ref InternetGateway
-  
-  RouteTable:
-    Type: "AWS::EC2::RouteTable"
-    Properties:
-      VpcId: !Ref VpcId
-
-  InternetRoute:
-    Type: "AWS::EC2::Route"
-    Properties:
-      DestinationCidrBlock: "0.0.0.0/0"
-      GatewayId: !Ref InternetGateway
-      RouteTableId: !Ref RouteTable
-
-  SubnetARouteTableAssociation:
-    Type: "AWS::EC2::SubnetRouteTableAssociation"
-    Properties:
-      RouteTableId: !Ref RouteTable
-      SubnetId: !Ref PublicSubnetId
+  InstanceProfile: 
+    Type: "AWS::IAM::InstanceProfile"
+    Properties: 
+      Path: "/"
+      Roles: 
+        - Fn::ImportValue:
+           !Sub "${Project}-web-server-role"
 
   WebAppInstance:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref AmiID
       InstanceType: t2.micro
-      KeyName: !Sub ${ProjectName}-web-server-${Enviroment}-key
-      SubnetId: !Ref PublicSubnetId
+      KeyName: !Sub ${Project}-web-server-${Enviroment}-key
+      SubnetId: 
+        Fn::ImportValue: !Sub "${Project}-${Enviroment}-PublicSubnet"
+      IamInstanceProfile: !Ref InstanceProfile
       SecurityGroupIds:
         - !GetAtt WebAppSecurityGroup.GroupId
 
   WebAppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Join ["-", [!Ref ProjectName , sg, !Ref Enviroment]]
+      GroupName: !Join ["-", [!Ref Project , sg, !Ref Enviroment]]
       GroupDescription: "Allow HTTP/HTTPS and SSH inbound and outbound traffic"
-      VpcId: !Ref VpcId
+      VpcId: 
+        Fn::ImportValue: !Sub "${Project}-${Enviroment}-Vpc"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -87,7 +71,73 @@ Resources:
       InstanceId: !Ref WebAppInstance
       Tags:
         - Key: Name
-          Value: !Join ["-", [!Ref ProjectName , eip, !Ref Enviroment]]
+          Value: !Join ["-", [!Ref Project , eip, !Ref Enviroment]]
+
+  RDSSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ${Project}-db-secrets
+      GenerateSecretString:
+        SecretStringTemplate: !Sub
+        - '{"username": "${username}"}'
+        - { username: !Ref DBUserName }
+        GenerateStringKey: 'password'
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\'
+
+  RDSSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref RDSSecret
+      TargetId: !Ref RDSInstance
+      TargetType: AWS::RDS::DBInstance
+
+  DBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: "subnet group for rds"
+      SubnetIds:
+        - Fn::ImportValue: !Sub "${Project}-${Enviroment}-PrivateSubnet1"
+        - Fn::ImportValue: !Sub "${Project}-${Enviroment}-PrivateSubnet2"
+
+  SecurityGroupDB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for DB instance
+      VpcId: 
+        Fn::ImportValue: !Sub "${Project}-${Enviroment}-Vpc"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          SourceSecurityGroupId: !Ref WebAppSecurityGroup
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub ${Project}-dev
+      DBName: !Sub ${Project}_dev
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: "20"
+      Engine: MySQL
+      EngineVersion: "8.0.33"
+      MultiAZ: False
+      PubliclyAccessible: true
+      StorageType: gp2
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref SecurityGroupDB
+      MasterUsername: !Join
+        - ''
+        - - '{{resolve:secretsmanager:'
+          - !Ref RDSSecret
+          - ':SecretString:username}}'
+
+      MasterUserPassword: !Join
+        - ''
+        - - '{{resolve:secretsmanager:'
+          - !Ref RDSSecret
+          - ':SecretString:password}}'
   
 
 
