@@ -25,7 +25,7 @@ Resources:
               Action: sts:AssumeRole
               Principal:
                 Service:
-                  - lambda.amazonaws.com
+                  - ec2.amazonaws.com
         RoleName: !Sub ${Project}-web-server-role
         Policies:
           - PolicyName: !Sub ${Project}-secret-manager-access-policy
@@ -40,8 +40,7 @@ Resources:
                     - secretsmanager:GetRandomPassword
                     - secretsmanager:GetResourcePolicy
                     - secretsmanager:ListSecretVersionIds
-                  Resource: !Sub "arn:aws:secretsmanager:*:${AWS::AccountId}:secret:salyr-*"
-                  
+                  Resource: !Sub "arn:aws:secretsmanager:*:${AWS::AccountId}:secret:salyr-*"   
         PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/${PermissionBoundaryName}
 
 Outputs:
