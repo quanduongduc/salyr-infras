@@ -35,6 +35,7 @@ Resources:
       VpcId: !Ref Vpc
       CidrBlock: 10.0.0.0/24
       AvailabilityZone: !Sub ${AWS::Region}a
+      MapPublicIpOnLaunch: True
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
@@ -42,6 +43,7 @@ Resources:
       VpcId: !Ref Vpc
       CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Sub ${AWS::Region}a
+      MapPublicIpOnLaunch: False
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
@@ -49,6 +51,7 @@ Resources:
       VpcId: !Ref Vpc
       CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Sub ${AWS::Region}c
+      MapPublicIpOnLaunch: False
 
   RouteTable:
     Type: AWS::EC2::RouteTable
