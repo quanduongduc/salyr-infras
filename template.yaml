@@ -41,28 +41,7 @@ Resources:
         Fn::ImportValue: !Sub "${Project}-${Enviroment}-PublicSubnet"
       IamInstanceProfile: !Ref InstanceProfile
       SecurityGroupIds:
-        - !GetAtt WebAppSecurityGroup.GroupId
-
-  WebAppSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: !Join ["-", [!Ref Project , sg, !Ref Enviroment]]
-      GroupDescription: "Allow HTTP/HTTPS and SSH inbound and outbound traffic"
-      VpcId: 
-        Fn::ImportValue: !Sub "${Project}-${Enviroment}-Vpc"
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
+        - Fn::ImportValue: !Sub "${Project}-${Enviroment}-WebAppSecurityGroup"
 
   WebAppEIP:
     Type: AWS::EC2::EIP
@@ -110,7 +89,8 @@ Resources:
         - IpProtocol: tcp
           FromPort: 0
           ToPort: 65535
-          SourceSecurityGroupId: !Ref WebAppSecurityGroup
+          SourceSecurityGroupId:
+            Fn::ImportValue: !Sub "${Project}-${Enviroment}-WebAppSecurityGroup"
 
   RDSInstance:
     Type: AWS::RDS::DBInstance

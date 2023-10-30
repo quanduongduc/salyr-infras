@@ -81,10 +81,10 @@ Resources:
   #   Properties:
   #     Domain: vp
 
-  SMEndpointSG:
+  WebAppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Join ["-", [!Ref Project , sg, endpoint, !Ref Enviroment]]
+      GroupName: !Join ["-", [!Ref Project , sg, !Ref Enviroment]]
       GroupDescription: "Allow HTTP/HTTPS and SSH inbound and outbound traffic"
       VpcId: !Ref Vpc
       SecurityGroupIngress:
@@ -100,6 +100,18 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
+
+  SMEndpointSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Join ["-", [!Ref Project , sg, endpoint, !Ref Enviroment]]
+      GroupDescription: "Allow HTTP/HTTPS and SSH inbound and outbound traffic"
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId : !Ref WebAppSecurityGroup
 
   SMEndpoint:
     Type: 'AWS::EC2::VPCEndpoint'
@@ -165,4 +177,8 @@ Outputs:
     Value: !Ref PrivateSubnet2
     Export:
       Name: !Sub "${Project}-${Enviroment}-PrivateSubnet2"
+  WebAppSG:
+    Value: !GetAtt WebAppSecurityGroup.GroupId
+    Export:
+      Name: !Sub "${Project}-${Enviroment}-WebAppSecurityGroup"
 
