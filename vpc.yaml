@@ -37,6 +37,50 @@ Resources:
       AvailabilityZone: !Sub ${AWS::Region}a
       MapPublicIpOnLaunch: True
 
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicSubnetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTalbe:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+    
+  # NATGateway:
+  #   Type: AWS::EC2::NatGateway
+  #   Properties:
+  #     AllocationId: <Elastic IP Allocation ID>
+  #     SubnetId: !Ref PublicSubnet
+
+  # NatGatewayRoute:
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId: !Ref RouteTable
+  #     DestinationCidrBlock: 0.0.0.0/0
+  #     NatGatewayId: !Ref NATGateway
+
+  ## ELASTIC IP
+  # NatPublicIP:
+  #   Type: AWS::EC2::EIP
+  #   DependsOn: Vpc
+  #   Properties:
+  #     Domain: vp
+
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -53,49 +97,19 @@ Resources:
       AvailabilityZone: !Sub ${AWS::Region}c
       MapPublicIpOnLaunch: False
 
-  RouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref Vpc
-
-  PublicSubnetRoute:
-    Type: AWS::EC2::Route
-    DependsOn: InternetGateway
-    Properties:
-      RouteTableId: !Ref RouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PublicSubnetAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet
-      RouteTableId: !Ref RouteTable
-
   PrivateSubnet1Association:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref RouteTable
+      RouteTableId: !Ref PrivateRouteTalbe
 
   PrivateSubnet2Association:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref RouteTable
+      RouteTableId: !Ref PrivateRouteTalbe
   
-  # NATGateway:
-  #   Type: AWS::EC2::NatGateway
-  #   Properties:
-  #     AllocationId: <Elastic IP Allocation ID>
-  #     SubnetId: !Ref PublicSubnet
-
-  # NatGatewayRoute:
-  #   Type: AWS::EC2::Route
-  #   Properties:
-  #     RouteTableId: !Ref RouteTable
-  #     DestinationCidrBlock: 0.0.0.0/0
-  #     NatGatewayId: !Ref NATGateway
+  
 
 Outputs:
   VpcId:
