@@ -29,12 +29,20 @@ Resources:
       VpcId: !Ref Vpc
       InternetGatewayId: !Ref InternetGateway
 
-  PublicSubnet:
+  PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
       CidrBlock: 10.0.0.0/24
       AvailabilityZone: !Sub ${AWS::Region}a
+      MapPublicIpOnLaunch: True
+  
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Sub ${AWS::Region}c
       MapPublicIpOnLaunch: True
 
   PublicRouteTable:
@@ -60,26 +68,25 @@ Resources:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref Vpc
-    
-  # NATGateway:
-  #   Type: AWS::EC2::NatGateway
-  #   Properties:
-  #     AllocationId: <Elastic IP Allocation ID>
-  #     SubnetId: !Ref PublicSubnet
 
-  # NatGatewayRoute:
-  #   Type: AWS::EC2::Route
-  #   Properties:
-  #     RouteTableId: !Ref RouteTable
-  #     DestinationCidrBlock: 0.0.0.0/0
-  #     NatGatewayId: !Ref NATGateway
+  NatPublicIP:
+    Type: AWS::EC2::EIP
+    DependsOn: Vpc
+    Properties:
+      Domain: vp
 
-  ## ELASTIC IP
-  # NatPublicIP:
-  #   Type: AWS::EC2::EIP
-  #   DependsOn: Vpc
-  #   Properties:
-  #     Domain: vp
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatPublicIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  NatGatewayRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTalbe
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
 
   WebAppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -131,7 +138,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      CidrBlock: 10.0.1.0/24
+      CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Sub ${AWS::Region}a
       MapPublicIpOnLaunch: False
 
@@ -139,7 +146,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      CidrBlock: 10.0.2.0/24
+      CidrBlock: 10.0.3.0/24
       AvailabilityZone: !Sub ${AWS::Region}c
       MapPublicIpOnLaunch: False
 
@@ -155,6 +162,17 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTalbe
   
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ALB
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
   
 
 Outputs:
@@ -163,10 +181,15 @@ Outputs:
     Export:
       Name: !Sub "${Project}-${Enviroment}-Vpc"
 
-  PublicSubnetId:
+  PublicSubnetId1:
     Value: !Ref PublicSubnet
     Export:
-      Name: !Sub "${Project}-${Enviroment}-PublicSubnet"
+      Name: !Sub "${Project}-${Enviroment}-PublicSubnet1"
+  
+  PublicSubnetId2:
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub "${Project}-${Enviroment}-PublicSubnet2"
 
   PrivateSubnet1Id:
     Value: !Ref PrivateSubnet1
@@ -181,4 +204,9 @@ Outputs:
     Value: !GetAtt WebAppSecurityGroup.GroupId
     Export:
       Name: !Sub "${Project}-${Enviroment}-WebAppSecurityGroup"
+  ALBSecurityGroup:
+    Value: !GetAtt WebAppSecurityGroup.GroupId
+    Export:
+      Name: !Sub "${Project}-${Enviroment}-ALBSecurityGroup"
+
 

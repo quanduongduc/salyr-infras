@@ -38,7 +38,7 @@ Resources:
       InstanceType: t2.micro
       KeyName: !Sub ${Project}-web-server-${Enviroment}-key
       SubnetId: 
-        Fn::ImportValue: !Sub "${Project}-${Enviroment}-PublicSubnet"
+        Fn::ImportValue: !Sub "${Project}-${Enviroment}-PublicSubnet1"
       IamInstanceProfile: !Ref InstanceProfile
       SecurityGroupIds:
         - Fn::ImportValue: !Sub "${Project}-${Enviroment}-WebAppSecurityGroup"
@@ -51,6 +51,50 @@ Resources:
       Tags:
         - Key: Name
           Value: !Join ["-", [!Ref Project , eip, !Ref Enviroment]]
+
+  WebAppLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Join ["-", [!Ref Project, alb, !Ref Enviroment]]
+      Scheme: internet-facing
+      Subnets:
+        - Fn::ImportValue: !Sub "${Project}-${Enviroment}-PublicSubnet1"
+        - Fn::ImportValue: !Sub "${Project}-${Enviroment}-PublicSubnet2"
+      SecurityGroups:
+        - Fn::ImportValue: !Sub "${Project}-${Enviroment}-ALBSecurityGroup"
+
+  WebAppTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 15
+      HealthyThresholdCount: 5
+      Matcher:
+        HttpCode: '200'
+      Name: !Join ["-", [!Ref Project, alb, target, group, !Ref Enviroment]]
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: '20'
+      Targets:
+      - Id: !Ref WebAppInstance
+        Port: 80
+      UnhealthyThresholdCount: 3
+      VpcId: 
+        Fn::ImportValue: !Sub "${Project}-${Enviroment}-Vpc"
+
+  WebAppListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref WebAppLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WebAppTargetGroup
+
 
   RDSSecret:
     Type: AWS::SecretsManager::Secret
